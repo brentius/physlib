@@ -1489,6 +1489,7 @@ keeping
 kelvin
 kernel
 ket
+kets
 key
 kg
 kilogram
@@ -1975,6 +1976,7 @@ parametric
 parity
 parsec
 parsed
+parseval
 part
 particle
 particledatagroup
@@ -2072,6 +2074,7 @@ potentiallimitseries
 potentials
 pound
 pounds
+povm
 pow
 power
 powers

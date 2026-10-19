@@ -296,6 +296,24 @@ lemma pure_mul_self : (pure ψ).m * (pure ψ).m = (pure ψ : Matrix d d ℂ) := 
   dsimp [pure, MState.m]
   simp [Matrix.vecMulVec_mul_vecMulVec, ← Braket.dot_eq_dotProduct]
 
+set_option backward.isDefEq.respectTransparency false in
+open Braket in
+/-- The projectors onto two members of an orthonormal family multiply to zero, unless they
+coincide, in which case the projector is idempotent. -/
+lemma pure_mul_pure_of_orthonormal {X : Type*} [DecidableEq X] (b : X → Ket d)
+    (hb : ∀ x y, 〈b x‖b y〉 = if x = y then 1 else 0) (x y : X) :
+    (pure (b x)).m * (pure (b y)).m = if x = y then (pure (b x)).m else 0 := by
+  dsimp [pure, MState.m]
+  simp [Matrix.vecMulVec_mul_vecMulVec, ← Braket.dot_eq_dotProduct, hb]
+  split_ifs <;> simp_all
+
+open Braket in
+/-- The sum of the projectors onto an orthonormal family is idempotent. -/
+lemma sum_pure_mul_sum_pure_of_orthonormal {X : Type*} [Fintype X] [DecidableEq X]
+    (b : X → Ket d) (hb : ∀ x y, 〈b x‖b y〉 = if x = y then 1 else 0) :
+    (∑ x, (pure (b x)).m) * (∑ x, (pure (b x)).m) = ∑ x, (pure (b x)).m := by
+  simp [Finset.sum_mul, Finset.mul_sum, pure_mul_pure_of_orthonormal b hb]
+
 /-- The purity of a state is Tr[ρ^2]. This is a `Prob`, because it is always
 between zero and one. -/
 def purity (ρ : MState d) : Prob := ⟪ρ, ρ⟫_Prob

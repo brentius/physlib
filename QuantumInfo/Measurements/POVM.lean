@@ -191,4 +191,62 @@ lemma measureForget_eq_kraus (Λ : POVM X d) :
   · intro y _ hyx; simp [Matrix.single, hyx]
   · simp
 
+/-!
+An orthonormal family `b : X → Ket d` gives the POVM `POVM.ofOrthonormal b hb` with outcomes
+`Option X`: the rank-one projector onto `b x` for the outcome `some x`, and the projector onto
+the orthogonal complement of their span for the outcome `none`.
+-/
+
+section ofOrthonormal
+
+open Braket
+
+open MatrixOrder in
+/-- The projector onto the orthogonal complement of the span of an orthonormal family is
+positive semidefinite. -/
+lemma one_sub_sum_pure_nonneg_of_orthonormal (b : X → Ket d)
+    (hb : ∀ x y, 〈b x‖b y〉 = if x = y then 1 else 0) :
+    0 ≤ 1 - ∑ x, (MState.pure (b x)).M := by
+  rw [HermitianMat.zero_le_iff, ← Matrix.nonneg_iff_posSemidef]
+  refine IsStarProjection.nonneg ⟨?_, (1 - ∑ x, (MState.pure (b x)).M).H⟩
+  simp only [IsIdempotentElem, HermitianMat.mat_sub, HermitianMat.mat_one,
+    HermitianMat.mat_finset_sum, MState.mat_M]
+  simp [sub_mul, mul_sub, MState.sum_pure_mul_sum_pure_of_orthonormal b hb]
+
+/-- The POVM built from an orthonormal family of kets `b : X → Ket d`: the outcome `some x`
+is the rank-one projector `∣b x〉〈b x∣`, and the outcome `none` is the complementary projector
+`1 - ∑ x, ∣b x〉〈b x∣`. -/
+noncomputable def ofOrthonormal (b : X → Ket d)
+    (hb : ∀ x y, 〈b x‖b y〉 = if x = y then 1 else 0) : POVM (Option X) d where
+  mats
+    | some x => (MState.pure (b x)).M
+    | none => 1 - ∑ x, (MState.pure (b x)).M
+  nonneg
+    | some x => (MState.pure (b x)).nonneg
+    | none => one_sub_sum_pure_nonneg_of_orthonormal b hb
+  normalized := by
+    rw [Fintype.sum_option]
+    exact sub_add_cancel _ _
+
+/-- Measuring a pure state `ψ` with `POVM.ofOrthonormal b hb` gives outcome `some x` with
+probability `‖〈b x‖ψ〉‖ ^ 2` (the Born rule). -/
+lemma measure_ofOrthonormal_some (b : X → Ket d)
+    (hb : ∀ x y, 〈b x‖b y〉 = if x = y then 1 else 0) (ψ : Ket d) (x : X) :
+    ((POVM.ofOrthonormal b hb).measure (MState.pure ψ) (some x) : ℝ) = ‖〈b x‖ψ〉‖ ^ 2 := by
+  change ⟪(MState.pure (b x)).M, (MState.pure ψ).M⟫ = _
+  rw [← MState.val_inner, MState.pure_inner]
+
+/-- Measuring a pure state `ψ` with `POVM.ofOrthonormal b hb` gives outcome `none` with
+probability `1 - ∑ x, ‖〈b x‖ψ〉‖ ^ 2`. -/
+lemma measure_ofOrthonormal_none (b : X → Ket d)
+    (hb : ∀ x y, 〈b x‖b y〉 = if x = y then 1 else 0) (ψ : Ket d) :
+    ((POVM.ofOrthonormal b hb).measure (MState.pure ψ) none : ℝ) =
+      1 - ∑ x, ‖〈b x‖ψ〉‖ ^ 2 := by
+  have h := ((POVM.ofOrthonormal b hb).measure (MState.pure ψ)).normalized
+  rw [Fintype.sum_option] at h
+  simp only [measure_ofOrthonormal_some b hb ψ] at h
+  linarith
+
+end ofOrthonormal
+
 end POVM
