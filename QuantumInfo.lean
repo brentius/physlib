@@ -74,6 +74,7 @@ public import QuantumInfo.ForMathlib.ULift
 public import QuantumInfo.ForMathlib.Unitary
 public import QuantumInfo.Foundations.OntologicalModel
 public import QuantumInfo.Foundations.PBR.Phases
+public import QuantumInfo.Foundations.PBR.QubitFrame
 public import QuantumInfo.Measurements.POVM
 public import QuantumInfo.Operators.Unitary
 public import QuantumInfo.ResourceTheory.FreeState

@@ -2188,6 +2188,7 @@ quantum
 quarks
 quarter
 quartic
+qubit
 quick
 quite
 quotient
