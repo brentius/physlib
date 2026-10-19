@@ -468,6 +468,7 @@ transposeTrick
 Qubit.X_Y_anticomm
 Qubit.Y_Z_anticomm
 Qubit.Z_X_anticomm
+OntologicalModel.PreparationIndependent.isPsiOntic
 
 [PhyslibAlpha]
 ClassicalFieldTheory.Local.isCritical_iff_eulerLagrange_zero
