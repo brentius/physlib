@@ -63,6 +63,7 @@ public import QuantumInfo.ForMathlib.LinearEquiv
 public import QuantumInfo.ForMathlib.Majorization
 public import QuantumInfo.ForMathlib.Matrix
 public import QuantumInfo.ForMathlib.MatrixNorm.TraceNorm
+public import QuantumInfo.ForMathlib.MeasureTheory.Pi
 public import QuantumInfo.ForMathlib.Minimax
 public import QuantumInfo.ForMathlib.Misc
 public import QuantumInfo.ForMathlib.SionMinimax
