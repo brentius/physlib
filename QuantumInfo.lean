@@ -72,6 +72,7 @@ public import QuantumInfo.ForMathlib.Tactic.Commutes
 public import QuantumInfo.ForMathlib.Tactic.Commutes.Attribute
 public import QuantumInfo.ForMathlib.ULift
 public import QuantumInfo.ForMathlib.Unitary
+public import QuantumInfo.Foundations.OntologicalModel
 public import QuantumInfo.Measurements.POVM
 public import QuantumInfo.Operators.Unitary
 public import QuantumInfo.ResourceTheory.FreeState
