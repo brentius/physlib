@@ -191,6 +191,41 @@ lemma Bra.normalize_ket_eq_self (ψ : Bra d) : Bra.normalize (ψ.vec) (Bra.exist
   unfold normalize
   simp only [apply, ψ.normalized', Real.sqrt_one, Complex.ofReal_one, div_one]
 
+/-- The bra-ket `〈ψ‖φ〉` is the dot product of `star ψ.vec` with `φ.vec`. -/
+lemma Braket.dot_eq_star_dotProduct (ψ φ : Ket d) : 〈ψ‖φ〉 = star ψ.vec ⬝ᵥ φ.vec :=
+  dot_eq_dotProduct ψ φ
+
+/-- The squared norm `∑ x, ‖v x‖ ^ 2` of a vector, as a complex number, is `star v ⬝ᵥ v`. -/
+lemma Braket.ofReal_sum_norm_sq_eq_star_dotProduct (v : d → ℂ) :
+    ((∑ x, ‖v x‖ ^ 2 : ℝ) : ℂ) = star v ⬝ᵥ v := by
+  push_cast
+  exact Finset.sum_congr rfl fun x _ => (Complex.conj_mul' (v x)).symm
+
+/-- A vector with nonzero squared norm has a nonzero entry, so it can be normalized with
+`Ket.normalize`. -/
+lemma Braket.exists_ne_zero_of_sum_norm_sq_ne_zero {v : d → ℂ} (h : ∑ x, ‖v x‖ ^ 2 ≠ 0) :
+    ∃ x, v x ≠ 0 := by
+  by_contra! hv
+  exact h (by simp [hv])
+
+/-- The bra-ket of a normalized vector `Ket.normalize v h` with a ket `φ`. -/
+lemma Braket.dot_normalize_left (v : d → ℂ) (h : ∃ x, v x ≠ 0) (φ : Ket d) :
+    〈Ket.normalize v h‖φ〉 = (star v ⬝ᵥ φ.vec) / √(∑ x, ‖v x‖ ^ 2) := by
+  rw [dot_eq_star_dotProduct]
+  simp only [dotProduct, Finset.sum_div]
+  refine Finset.sum_congr rfl fun x _ => ?_
+  simp [Ket.normalize, star_div₀, div_mul_eq_mul_div]
+
+/-- The bra-ket of two normalized vectors `Ket.normalize v hv` and `Ket.normalize w hw`. -/
+lemma Braket.dot_normalize_normalize (v w : d → ℂ) (hv : ∃ x, v x ≠ 0) (hw : ∃ x, w x ≠ 0) :
+    〈Ket.normalize v hv‖Ket.normalize w hw〉 =
+      (star v ⬝ᵥ w) / √(∑ x, ‖w x‖ ^ 2) / √(∑ x, ‖v x‖ ^ 2) := by
+  rw [dot_normalize_left]
+  congr 1
+  simp only [dotProduct, Finset.sum_div]
+  refine Finset.sum_congr rfl fun x _ => ?_
+  simp [Ket.normalize, mul_div_assoc]
+
 /-- Ket form by the superposition of all elements in `d`.
 Commonly denoted by |+⟩, especially for qubits -/
 def uniform_superposition [hdne : Nonempty d] : Ket d := by
@@ -281,6 +316,14 @@ lemma Ket.piProd_apply {ι : Type*} [DecidableEq ι] [Fintype ι] {d : ι → Ty
     [∀ i, Fintype (d i)] (ψ : (i : ι) → Ket (d i)) (j : (i : ι) → d i) :
     Ket.piProd ψ j = ∏ i, ψ i (j i) :=
   rfl
+
+/-- The bra-ket of two `Ket.piProd` states is the product of the bra-kets of the factors:
+`〈ψ₁ ⊗ᵠ ⋯ ⊗ᵠ ψₙ‖φ₁ ⊗ᵠ ⋯ ⊗ᵠ φₙ〉 = ∏ i, 〈ψᵢ‖φᵢ〉`. -/
+lemma Braket.dot_piProd {ι : Type*} [DecidableEq ι] [Fintype ι] {d : ι → Type*}
+    [∀ i, Fintype (d i)] (ψ φ : (i : ι) → Ket (d i)) :
+    〈Ket.piProd ψ‖Ket.piProd φ〉 = ∏ i, 〈ψ i‖φ i〉 := by
+  simp only [Braket.dot, Bra.eq_conj, Ket.piProd_apply, map_prod, ← Finset.prod_mul_distrib]
+  exact (Fintype.prod_sum fun i a => conj (ψ i a) * φ i a).symm
 
 /-- A Ket is a product if it's `Ket.prod` of two kets. -/
 def Ket.IsProd (ψ : Ket (d₁ × d₂)) : Prop := ∃ ξ φ, ψ = ξ ⊗ᵠ φ
@@ -531,5 +574,29 @@ lemma Braket.norm_dot_le_one (ψ₁ ψ₂ : Ket d) : ‖〈ψ₁‖ψ₂〉‖ �
     _ = 1 := by rw [ketToEuclidean_norm, ketToEuclidean_norm, mul_one]
 
 end norm_bounds
+
+section parseval
+
+/-- Parseval's identity: if the vectors `v a` are orthonormal, the squared norm of
+`∑ a, β a • v a` is `∑ a, ‖β a‖ ^ 2`. -/
+lemma Braket.sum_norm_sq_sum_mul_of_orthonormal {ι κ : Type*} [Fintype ι] [Fintype κ]
+    [DecidableEq κ] (v : κ → ι → ℂ)
+    (hv : ∀ a b, ∑ i, starRingEnd ℂ (v a i) * v b i = if a = b then 1 else 0) (β : κ → ℂ) :
+    ∑ i, ‖∑ a, β a * v a i‖ ^ 2 = ∑ a, ‖β a‖ ^ 2 := by
+  have key : ((∑ i, ‖∑ a, β a * v a i‖ ^ 2 : ℝ) : ℂ) = ((∑ a, ‖β a‖ ^ 2 : ℝ) : ℂ) := by
+    push_cast
+    simp_rw [← Complex.conj_mul', map_sum, map_mul, Finset.sum_mul_sum]
+    rw [Finset.sum_comm]
+    refine Finset.sum_congr rfl fun a _ => ?_
+    rw [Finset.sum_comm]
+    calc ∑ b, ∑ i, starRingEnd ℂ (β a) * starRingEnd ℂ (v a i) * (β b * v b i)
+        = ∑ b, starRingEnd ℂ (β a) * β b * ∑ i, starRingEnd ℂ (v a i) * v b i := by
+          refine Finset.sum_congr rfl fun b _ => ?_
+          rw [Finset.mul_sum]
+          exact Finset.sum_congr rfl fun i _ => by ring
+      _ = _ := by simp [hv]
+  exact_mod_cast key
+
+end parseval
 
 end braket
