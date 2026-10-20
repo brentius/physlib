@@ -658,6 +658,7 @@ public import PhyslibAlpha.ProbabilisticTheory.Weight.Extension
 public import PhyslibAlpha.QuantumMechanics.AngularMomentum.Addition
 public import PhyslibAlpha.QuantumMechanics.AngularMomentum.Basic
 public import PhyslibAlpha.QuantumMechanics.Blackbody.RayleighJeans
+public import PhyslibAlpha.QuantumMechanics.Foundations.OntologicalModel
 public import PhyslibAlpha.QuantumMechanics.HarmonicOscillator.LadderSystem
 public import PhyslibAlpha.QuantumMechanics.HarmonicOscillator.Vacuum
 public import PhyslibAlpha.QuantumMechanics.HilbertSpaces.FiniteTarget.Measurement
