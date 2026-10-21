@@ -668,6 +668,7 @@ public import PhyslibAlpha.QuantumMechanics.AngularMomentum.WignerEckartIrreduci
 public import PhyslibAlpha.QuantumMechanics.Blackbody.RayleighJeans
 public import PhyslibAlpha.QuantumMechanics.Foundations.OntologicalModel
 public import PhyslibAlpha.QuantumMechanics.Foundations.PBR.Phases
+public import PhyslibAlpha.QuantumMechanics.Foundations.PBR.QubitFrame
 public import PhyslibAlpha.QuantumMechanics.HarmonicOscillator.LadderSystem
 public import PhyslibAlpha.QuantumMechanics.HarmonicOscillator.Vacuum
 public import PhyslibAlpha.QuantumMechanics.HilbertSpaces.FiniteTarget.Operators
