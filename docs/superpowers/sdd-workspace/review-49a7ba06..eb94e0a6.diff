@@ -1,0 +1,433 @@
+# Review package: 49a7ba06..HEAD
+
+## Commits
+eb94e0a6 feat(PhyslibAlpha/PBR): add the Pusey-Barrett-Rudolph theorem
+7a2ae785 feat(PhyslibAlpha/PBR): add the PBR measurement vectors and exists_measurement
+
+## Files changed
+ PhyslibAlpha.lean                                  |   2 +
+ .../Foundations/PBR/Measurement.lean               | 205 +++++++++++++++++++++
+ .../QuantumMechanics/Foundations/PBR/Theorem.lean  | 147 +++++++++++++++
+ scripts/lint/exemptions/Theorems.txt               |   1 +
+ 4 files changed, 355 insertions(+)
+
+## Diff
+diff --git a/PhyslibAlpha.lean b/PhyslibAlpha.lean
+index 94cc92a3..0c56b4ba 100644
+--- a/PhyslibAlpha.lean
++++ b/PhyslibAlpha.lean
+@@ -652,22 +652,24 @@ public import PhyslibAlpha.ProbabilisticTheory.WStarAlgebra.Mathlib
+ public import PhyslibAlpha.ProbabilisticTheory.WStarAlgebra.RankOnePairing
+ public import PhyslibAlpha.ProbabilisticTheory.WStarAlgebra.TracePairingNorm
+ public import PhyslibAlpha.ProbabilisticTheory.WStarAlgebra.TracePairingSurjectivity
+ public import PhyslibAlpha.ProbabilisticTheory.Weight.Basic
+ public import PhyslibAlpha.ProbabilisticTheory.Weight.Continuous
+ public import PhyslibAlpha.ProbabilisticTheory.Weight.Extension
+ public import PhyslibAlpha.QuantumMechanics.AngularMomentum.Addition
+ public import PhyslibAlpha.QuantumMechanics.AngularMomentum.Basic
+ public import PhyslibAlpha.QuantumMechanics.Blackbody.RayleighJeans
+ public import PhyslibAlpha.QuantumMechanics.Foundations.OntologicalModel
++public import PhyslibAlpha.QuantumMechanics.Foundations.PBR.Measurement
+ public import PhyslibAlpha.QuantumMechanics.Foundations.PBR.Phases
+ public import PhyslibAlpha.QuantumMechanics.Foundations.PBR.QubitFrame
++public import PhyslibAlpha.QuantumMechanics.Foundations.PBR.Theorem
+ public import PhyslibAlpha.QuantumMechanics.HarmonicOscillator.LadderSystem
+ public import PhyslibAlpha.QuantumMechanics.HarmonicOscillator.Vacuum
+ public import PhyslibAlpha.QuantumMechanics.HilbertSpaces.FiniteTarget.Measurement
+ public import PhyslibAlpha.QuantumMechanics.HilbertSpaces.FiniteTarget.Operators
+ public import PhyslibAlpha.QuantumMechanics.HilbertSpaces.FiniteTarget.Product
+ public import PhyslibAlpha.QuantumMechanics.HilbertSpaces.FiniteTarget.ProductState
+ public import PhyslibAlpha.QuantumMechanics.QuantumHarmonicOscillator
+ public import PhyslibAlpha.QuantumMechanics.StinespringDilation
+ public import PhyslibAlpha.Relativity.Fermions.Dirac.MinimalDimension
+ public import PhyslibAlpha.Relativity.Fermions.Weyl.BoostWeight
+diff --git a/PhyslibAlpha/QuantumMechanics/Foundations/PBR/Measurement.lean b/PhyslibAlpha/QuantumMechanics/Foundations/PBR/Measurement.lean
+new file mode 100644
+index 00000000..3c758964
+--- /dev/null
++++ b/PhyslibAlpha/QuantumMechanics/Foundations/PBR/Measurement.lean
+@@ -0,0 +1,205 @@
++/-
++Copyright (c) 2026 brent. All rights reserved.
++Released under Apache 2.0 license as described in the file LICENSE.
++Authors: brent
++-/
++module
++
++public import PhyslibAlpha.QuantumMechanics.Foundations.PBR.QubitFrame
++public import PhyslibAlpha.QuantumMechanics.HilbertSpaces.FiniteTarget.Measurement
++public import PhyslibAlpha.QuantumMechanics.HilbertSpaces.FiniteTarget.ProductState
++
++/-!
++# The PBR measurement
++
++The entangled measurement on `n` copies used in the Pusey–Barrett–Rudolph (PBR) theorem.
++
++## i. Overview
++
++Let `F` be a qubit frame of two unit vectors `ψ 0`, `ψ 1`, with frame vectors `e 0`, `e 1` and
++amplitudes `c`, `s`, and let `ω z` be unit phases indexed by `z : Fin n → Fin 2`. The product
++frame vectors `E z = e (z 0) ⊗ ⋯ ⊗ e (z (n - 1))` (the vectors `piProdVec fun i => e (z i)`)
++are orthonormal, and so are the measurement vectors
++`b x = 2^{-n/2} ∑ z, conj (ω z) * walsh x z • E z`. If `∑ z, ω z * ∏ i, ![c, s] (z i) = 0`,
++then `b x` is orthogonal to the product vector `Ψ x = ψ (x 0) ⊗ ⋯ ⊗ ψ (x (n - 1))`. Moreover
++every product vector `Ψ y` lies in the span of the vectors `b x`. The measurement in the
++orthonormal family `b` is therefore a measurement on `n` copies whose outcome `x` has
++probability zero in the vector state of `Ψ x`.
++
++## ii. Key results
++
++- `PBR.QubitFrame.measurementVec` : the measurement vectors `b x`.
++- `PBR.QubitFrame.orthonormal_measurementVec` : the measurement vectors are orthonormal.
++- `PBR.QubitFrame.inner_measurementVec_piProdVec_self` : `b x` is orthogonal to `Ψ x`.
++- `PBR.QubitFrame.sum_norm_sq_inner_measurementVec` : `∑ x, ‖⟪b x, Ψ y⟫_ℂ‖ ^ 2 = 1`.
++- `PBR.exists_measurement` : the PBR measurement.
++
++## iii. Table of contents
++
++- A. The product frame vectors
++- B. The measurement vectors
++  - B.1. Definition
++  - B.2. Orthonormality
++  - B.3. Inner products with product vectors
++- C. The PBR measurement
++
++## iv. References
++
++- M. F. Pusey, J. Barrett and T. Rudolph, *On the reality of the quantum state*,
++  Nature Phys. 8, 475–478 (2012), arXiv:1111.3328. [ref: Pusey:2011de]
++
++-/
++
++@[expose] public section
++
++noncomputable section
++
++namespace QuantumMechanics.PBR
++
++open InnerProductSpace ProbabilisticTheory UnitalPositiveLinearMap FiniteHilbertSpace
++
++/-!
++## A. The product frame vectors
++
++-/
++
++namespace QubitFrame
++
++variable {d : Type*} [Fintype d] [DecidableEq d] {ψ : Fin 2 → 𝓗[d]} {n : ℕ}
++
++/-- The product frame vector `E z = e (z 0) ⊗ ⋯ ⊗ e (z (n - 1))` on `n` copies. -/
++def frameVec (F : QubitFrame ψ) (z : Fin n → Fin 2) : 𝓗[Fin n → d] :=
++  piProdVec fun i => F.e (z i)
++
++variable (F : QubitFrame ψ)
++
++/-- The product frame vectors are orthonormal. -/
++lemma inner_frameVec_frameVec (z z' : Fin n → Fin 2) :
++    ⟪F.frameVec z, F.frameVec z'⟫_ℂ = if z = z' then 1 else 0 := by
++  simp only [frameVec, inner_piProdVec, orthonormal_iff_ite.1 F.orthonormal_e,
++    Finset.prod_boole, Finset.mem_univ, true_implies, funext_iff]
++
++/-- The components of a product vector of the `ψ b` in the product frame. -/
++lemma inner_frameVec_piProdVec (z x : Fin n → Fin 2) :
++    ⟪F.frameVec z, piProdVec fun i => ψ (x i)⟫_ℂ =
++      (∏ i, F.phase (x i)) * walsh z x * ∏ i, ![(F.c : ℂ), (F.s : ℂ)] (z i) := by
++  simp only [frameVec, inner_piProdVec, F.inner_e_state, Finset.prod_mul_distrib, walsh]
++
++/-- Each product vector of the `ψ b` lies in the span of the product frame. -/
++lemma sum_norm_sq_inner_frameVec_piProdVec (y : Fin n → Fin 2) :
++    ∑ z : Fin n → Fin 2, ‖⟪F.frameVec z, piProdVec fun i => ψ (y i)⟫_ℂ‖ ^ 2 = 1 := by
++  simp only [frameVec, inner_piProdVec, norm_prod, ← Finset.prod_pow]
++  rw [← Fintype.prod_sum (fun i j => ‖⟪F.e j, ψ (y i)⟫_ℂ‖ ^ 2)]
++  exact Finset.prod_eq_one fun i _ => F.sum_norm_sq_inner_e_state (y i)
++
++/-!
++## B. The measurement vectors
++
++### B.1. Definition
++
++-/
++
++/-- The PBR measurement vector `b x = (√(2 ^ n))⁻¹ ∑ z, conj (ω z) * walsh x z • E z`. It is a
++unit vector when the phases `ω z` have unit norm, see `orthonormal_measurementVec`. -/
++def measurementVec (ω : (Fin n → Fin 2) → ℂ) (x : Fin n → Fin 2) : 𝓗[Fin n → d] :=
++  ∑ z, ((Real.sqrt (2 ^ n))⁻¹ * starRingEnd ℂ (ω z) * walsh x z) • F.frameVec z
++
++variable {ω : (Fin n → Fin 2) → ℂ}
++
++/-- The inner product with a measurement vector is the corresponding combination of inner
++products with the product frame vectors. -/
++lemma inner_measurementVec (x : Fin n → Fin 2) (φ : 𝓗[Fin n → d]) :
++    ⟪F.measurementVec ω x, φ⟫_ℂ =
++      ∑ z, (Real.sqrt (2 ^ n))⁻¹ * ω z * walsh x z * ⟪F.frameVec z, φ⟫_ℂ := by
++  rw [measurementVec, sum_inner]
++  refine Finset.sum_congr rfl fun z _ => ?_
++  rw [inner_smul_left, map_mul, map_mul, Complex.conj_ofReal, Complex.conj_conj, conj_walsh]
++
++/-!
++### B.2. Orthonormality
++
++-/
++
++/-- The components of a measurement vector in the product frame. -/
++lemma inner_frameVec_measurementVec (z y : Fin n → Fin 2) :
++    ⟪F.frameVec z, F.measurementVec ω y⟫_ℂ =
++      (Real.sqrt (2 ^ n))⁻¹ * starRingEnd ℂ (ω z) * walsh y z := by
++  simp only [measurementVec, inner_sum, inner_smul_right, F.inner_frameVec_frameVec, mul_ite,
++    mul_one, mul_zero, Finset.sum_ite_eq, Finset.mem_univ, ↓reduceIte]
++
++/-- The PBR measurement vectors of unit phases are orthonormal. -/
++lemma orthonormal_measurementVec (hω : ∀ z, ‖ω z‖ = 1) :
++    Orthonormal ℂ (F.measurementVec ω) := by
++  refine orthonormal_iff_ite.2 fun x y => ?_
++  have hω' : ∀ z, ω z * starRingEnd ℂ (ω z) = 1 := fun z => by
++    rw [Complex.mul_conj', hω]
++    simp
++  rw [inner_measurementVec]
++  simp_rw [inner_frameVec_measurementVec]
++  calc _ = ∑ z, (((Real.sqrt (2 ^ n))⁻¹ : ℝ) : ℂ) ^ 2 * (walsh x z * walsh y z) := by
++        refine Finset.sum_congr rfl fun z _ => ?_
++        linear_combination
++          ((((Real.sqrt (2 ^ n))⁻¹ : ℝ) : ℂ) ^ 2 * walsh x z * walsh y z) * hω' z
++    _ = _ := by rw [← Finset.mul_sum, sum_walsh_mul_walsh, ofReal_inv_sqrt_two_pow_sq_mul_ite]
++
++/-!
++### B.3. Inner products with product vectors
++
++-/
++
++/-- If `∑ z, ω z * ∏ i, ![c, s] (z i) = 0`, the measurement vector `b x` is orthogonal to the
++product vector `Ψ x = ψ (x 0) ⊗ ⋯ ⊗ ψ (x (n - 1))`. -/
++lemma inner_measurementVec_piProdVec_self
++    (hsum : ∑ z, ω z * ∏ i, ![(F.c : ℂ), (F.s : ℂ)] (z i) = 0) (x : Fin n → Fin 2) :
++    ⟪F.measurementVec ω x, piProdVec fun i => ψ (x i)⟫_ℂ = 0 := by
++  rw [inner_measurementVec]
++  simp_rw [inner_frameVec_piProdVec]
++  calc _ = ∑ z, ((Real.sqrt (2 ^ n))⁻¹ * ∏ i, F.phase (x i)) *
++        (ω z * ∏ i, ![(F.c : ℂ), (F.s : ℂ)] (z i)) := by
++        refine Finset.sum_congr rfl fun z _ => ?_
++        rw [walsh_comm z x]
++        linear_combination ((((Real.sqrt (2 ^ n))⁻¹ : ℝ) : ℂ) * (∏ i, F.phase (x i)) * ω z *
++          ∏ i, ![(F.c : ℂ), (F.s : ℂ)] (z i)) * walsh_mul_self x z
++    _ = 0 := by rw [← Finset.mul_sum, hsum, mul_zero]
++
++/-- Parseval's identity for the PBR measurement: every product vector
++`Ψ y = ψ (y 0) ⊗ ⋯ ⊗ ψ (y (n - 1))` lies in the span of the measurement vectors. -/
++lemma sum_norm_sq_inner_measurementVec (hω : ∀ z, ‖ω z‖ = 1) (y : Fin n → Fin 2) :
++    ∑ x, ‖⟪F.measurementVec ω x, piProdVec fun i => ψ (y i)⟫_ℂ‖ ^ 2 = 1 := by
++  simp_rw [inner_measurementVec]
++  calc _ = ∑ x : Fin n → Fin 2, ‖∑ z, (ω z * ⟪F.frameVec z, piProdVec fun i => ψ (y i)⟫_ℂ) *
++        ((Real.sqrt (2 ^ n))⁻¹ * walsh x z)‖ ^ 2 :=
++        Finset.sum_congr rfl fun x _ =>
++          congrArg (‖·‖ ^ 2) (Finset.sum_congr rfl fun z _ => by ring)
++    _ = ∑ z, ‖ω z * ⟪F.frameVec z, piProdVec fun i => ψ (y i)⟫_ℂ‖ ^ 2 :=
++        sum_norm_sq_sum_mul_inv_sqrt_mul_walsh n _
++    _ = 1 := by
++        simp_rw [norm_mul, hω, one_mul]
++        exact F.sum_norm_sq_inner_frameVec_piProdVec y
++
++end QubitFrame
++
++/-!
++## C. The PBR measurement
++
++-/
++
++/-- The PBR measurement: for two unit vectors with different vector states there is a number of
++copies `n` and a measurement on `n` copies whose outcome `x` has probability zero in the vector
++state of the product vector `ψ (x 0) ⊗ ⋯ ⊗ ψ (x (n - 1))`. -/
++lemma exists_measurement {d : Type*} [Fintype d] [DecidableEq d] (ψ : Fin 2 → 𝓗[d])
++    (hψ : ∀ b, ‖ψ b‖ = 1) (h : ofVec (𝕜 := ℂ) (hψ 0) ≠ ofVec (𝕜 := ℂ) (hψ 1)) :
++    ∃ (n : ℕ) (M : Measurement (Fin n → Fin 2)
++        (Observable (𝓗[Fin n → d] →L[ℂ] 𝓗[Fin n → d]))), ∀ x : Fin n → Fin 2,
++      (ofVec (norm_piProdVec_eq_one fun i => hψ (x i)))⟨M {x} (measurableSet_singleton x)⟩ =
++        0 := by
++  obtain ⟨F⟩ := exists_qubitFrame ψ hψ (norm_inner_lt_one_of_ofVec_ne (hψ 0) (hψ 1) h)
++  obtain ⟨n, hn⟩ := exists_two_mul_pow_le F.c_pos F.s_pos
++  obtain ⟨ω, hω, hsum⟩ := exists_phases F.c_pos F.s_pos.le F.s_le_c hn
++  refine ⟨n, orthonormalMeasurement (F.orthonormal_measurementVec hω) 0, fun x => ?_⟩
++  -- the outcome `x` has probability `‖⟪b x, Ψ x⟫_ℂ‖ ^ 2 = 0`, plus `1 - 1` if `x = 0`
++  rw [expectation_orthonormalMeasurement, F.inner_measurementVec_piProdVec_self hsum,
++    norm_zero, zero_pow two_ne_zero, zero_add, F.sum_norm_sq_inner_measurementVec hω, sub_self,
++    ite_self]
++
++end QuantumMechanics.PBR
+diff --git a/PhyslibAlpha/QuantumMechanics/Foundations/PBR/Theorem.lean b/PhyslibAlpha/QuantumMechanics/Foundations/PBR/Theorem.lean
+new file mode 100644
+index 00000000..547e1372
+--- /dev/null
++++ b/PhyslibAlpha/QuantumMechanics/Foundations/PBR/Theorem.lean
+@@ -0,0 +1,147 @@
++/-
++Copyright (c) 2026 brent. All rights reserved.
++Released under Apache 2.0 license as described in the file LICENSE.
++Authors: brent
++-/
++module
++
++public import PhyslibAlpha.Mathematics.MeasureTheory.Pi
++public import PhyslibAlpha.QuantumMechanics.Foundations.OntologicalModel
++public import PhyslibAlpha.QuantumMechanics.Foundations.PBR.Measurement
++
++/-!
++# The Pusey–Barrett–Rudolph theorem
++
++Every preparation-independent ontological model of a finite target quantum system is ψ-ontic.
++
++## i. Overview
++
++The Pusey–Barrett–Rudolph (PBR) theorem says that the quantum state is a real property of a
++system rather than a state of knowledge about it. Precisely, consider an ontological model of a
++finite target quantum system `𝓗[d]` which reproduces the Born rule for every measurement, both
++for one system and for `n` independently prepared systems, and which is preparation
++independent: preparing `n` systems independently in the product vector
++`χ 0 ⊗ ⋯ ⊗ χ (n - 1)` (the unit vector `piProdVec χ`) gives independent ontic states
++`l 0, …, l (n - 1)`, distributed according to `prep (χ 0), …, prep (χ (n - 1))`, which jointly
++determine the ontic state `ι n l` of the `n` systems. The `n`-copy ontic space need not be the
++Cartesian product of `n` copies of the single-copy one (taking it to be, with `ι n = id`, is
++the Cartesian-product formulation, see `OntologicalModel.PreparationIndependent.of_prep_piProdVec`).
++Then the preparation measures of any two unit vectors with different vector states are mutually
++singular, i.e. the model is ψ-ontic.
++
++The proof has a quantum part and a classical part. Fix two unit vectors `ψ` and `φ` with
++different vector states and write `ψ₀ = ψ`, `ψ₁ = φ` (in Lean, `![ψ, φ]`). The quantum part is
++the PBR measurement `PBR.exists_measurement`: there is a measurement on `n` copies, with
++outcomes `x : Fin n → Fin 2`, whose outcome `x` has probability zero in the vector state of the
++product vector `ψ_{x 0} ⊗ ⋯ ⊗ ψ_{x (n - 1)}`. Pulling the response functions of this
++measurement back along `ι n` gives functions `ξ x` on `n`-tuples of single-copy ontic states.
++The classical part, proved here, shows that this forces the preparation measures `μ 0 = prep ψ`,
++`μ 1 = prep φ` to be mutually singular: a common lower bound `ν` of `μ 0` and `μ 1` satisfies
++`ν(Λ) ^ n = ∑ x, ∫ ξ x dν^{⊗n} ≤ ∑ x, ∫ ξ x dμ_{x 0} ⊗ ⋯ ⊗ μ_{x (n - 1)} = 0`.
++
++## ii. Key results
++
++- `PBR.mutuallySingular_of_forall_exists_lintegral_eq_zero` : the classical part of the proof.
++- `OntologicalModel.PreparationIndependent.isPsiOntic` : the PBR theorem.
++
++## iii. Table of contents
++
++- A. The classical part of the proof
++- B. The PBR theorem
++
++## iv. References
++
++- M. F. Pusey, J. Barrett and T. Rudolph, *On the reality of the quantum state*,
++  Nature Phys. 8, 475–478 (2012), arXiv:1111.3328. [ref: Pusey:2011de]
++- N. Harrigan and R. W. Spekkens, *Einstein, incompleteness, and the epistemic view of quantum
++  states*, Found. Phys. 40, 125–157 (2010), arXiv:0706.2661. [ref: Harrigan:2007wfc]
++
++-/
++
++@[expose] public section
++
++namespace QuantumMechanics
++
++open MeasureTheory ProbabilisticTheory UnitalPositiveLinearMap FiniteHilbertSpace
++open scoped ENNReal
++
++namespace PBR
++
++/-!
++## A. The classical part of the proof
++
++-/
++
++/-- Let `ξ o` be measurable response functions on `n` copies which sum to one at every point,
++and suppose every outcome `o` integrates to zero against some product measure
++`μ (x 0) ⊗ ⋯ ⊗ μ (x (n - 1))`. Then a finite measure `ν` with `ν ≤ μ b` for both `b : Fin 2`
++is zero. -/
++lemma eq_zero_of_le_of_exists_lintegral_eq_zero {Λ O : Type*}
++    [MeasurableSpace Λ] [Fintype O] (μ : Fin 2 → Measure Λ) {n : ℕ}
++    (ξ : O → (Fin n → Λ) → ℝ≥0∞) (hξ : ∀ o, Measurable (ξ o)) (hsum : ∀ l, ∑ o, ξ o l = 1)
++    (hzero : ∀ o, ∃ x : Fin n → Fin 2, ∫⁻ l, ξ o l ∂Measure.pi (fun i => μ (x i)) = 0)
++    (ν : Measure Λ) [IsFiniteMeasure ν] (hν : ∀ b, ν ≤ μ b) : ν = 0 := by
++  have hle : ∀ o, ∫⁻ l, ξ o l ∂Measure.pi (fun _ : Fin n => ν) = 0 := fun o => by
++    obtain ⟨x, hx⟩ := hzero o
++    exact nonpos_iff_eq_zero.1 <|
++      (lintegral_mono' (Measure.pi_mono fun i => hν (x i)) le_rfl).trans hx.le
++  have hpi : Measure.pi (fun _ : Fin n => ν) Set.univ = 0 := by
++    calc _ = ∫⁻ l, ∑ o, ξ o l ∂Measure.pi (fun _ : Fin n => ν) := by simp [hsum]
++      _ = 0 := by
++        rw [lintegral_finsetSum _ fun o _ => hξ o]
++        exact Finset.sum_eq_zero fun o _ => hle o
++  rw [Measure.pi_univ, Finset.prod_const, Finset.card_univ, Fintype.card_fin] at hpi
++  exact Measure.measure_univ_eq_zero.1 (pow_eq_zero_iff'.1 hpi).1
++
++/-- The classical part of the PBR theorem: if every outcome `o` of a family of response
++functions `ξ o` on `n` copies (measurable, summing to one) integrates to zero against some
++product measure `μ (x 0) ⊗ ⋯ ⊗ μ (x (n - 1))`, then the finite measures `μ 0` and `μ 1` are
++mutually singular. -/
++lemma mutuallySingular_of_forall_exists_lintegral_eq_zero {Λ O : Type*} [MeasurableSpace Λ]
++    [Fintype O] (μ : Fin 2 → Measure Λ) [∀ b, IsFiniteMeasure (μ b)] {n : ℕ}
++    (ξ : O → (Fin n → Λ) → ℝ≥0∞) (hξ : ∀ o, Measurable (ξ o)) (hsum : ∀ l, ∑ o, ξ o l = 1)
++    (hzero : ∀ o, ∃ x : Fin n → Fin 2, ∫⁻ l, ξ o l ∂Measure.pi (fun i => μ (x i)) = 0) :
++    μ 0 ⟂ₘ μ 1 := by
++  refine Measure.mutuallySingular_iff_disjoint.2 fun ν h0 h1 => le_bot_iff.2 ?_
++  have : IsFiniteMeasure ν := isFiniteMeasure_of_le (μ 0) h0
++  exact eq_zero_of_le_of_exists_lintegral_eq_zero μ ξ hξ hsum hzero ν
++    (Fin.forall_fin_two.2 ⟨h0, h1⟩)
++
++end PBR
++
++/-!
++## B. The PBR theorem
++
++-/
++
++namespace OntologicalModel
++
++/-- **Pusey–Barrett–Rudolph theorem.** An ontological model of a finite target quantum system
++which reproduces the Born rule for every measurement, for one system and for any number `n` of
++systems, and which is preparation independent (independently prepared product vectors give
++independent ontic states, which jointly determine the ontic state of the `n` systems) is
++ψ-ontic: the preparation measures of any two unit vectors with different vector states are
++mutually singular. The `n`-copy ontic spaces `Λn n` are arbitrary. -/
++theorem PreparationIndependent.isPsiOntic {d Λ : Type*} [Fintype d] [DecidableEq d]
++    [MeasurableSpace Λ] {M : OntologicalModel d Λ} {Λn : ℕ → Type*}
++    [∀ n, MeasurableSpace (Λn n)] {Mn : (n : ℕ) → OntologicalModel (Fin n → d) (Λn n)}
++    (h : M.PreparationIndependent Mn) : M.IsPsiOntic := by
++  obtain ⟨ι, hι, h⟩ := h
++  intro ψ φ hψ hφ hne
++  have hv : ∀ b, ‖![ψ, φ] b‖ = 1 := Fin.forall_fin_two.2 ⟨hψ, hφ⟩
++  -- the PBR measurement on `n` copies, whose outcome `x` excludes the product vector `Ψ x`
++  obtain ⟨n, E, hE⟩ := PBR.exists_measurement ![ψ, φ] hv hne
++  -- its response functions, pulled back to `n`-tuples of single-copy ontic states
++  refine PBR.mutuallySingular_of_forall_exists_lintegral_eq_zero
++    (fun b => M.prep (![ψ, φ] b) (hv b)) (fun x => (Mn n).resp E x ∘ ι n)
++    (fun x => ((Mn n).measurable_resp E x).comp (hι n))
++    (fun l => (Mn n).sum_resp E (ι n l)) fun x => ⟨x, ?_⟩
++  have key := (Mn n).lintegral_resp E (piProdVec fun i => ![ψ, φ] (x i))
++    (norm_piProdVec_eq_one fun i => hv (x i)) x
++  rw [h n _ fun i => hv (x i), lintegral_map ((Mn n).measurable_resp E x) (hι n), hE x,
++    ENNReal.ofReal_zero] at key
++  exact key
++
++end OntologicalModel
++
++end QuantumMechanics
+diff --git a/scripts/lint/exemptions/Theorems.txt b/scripts/lint/exemptions/Theorems.txt
+index 230446e3..0a79d9be 100644
+--- a/scripts/lint/exemptions/Theorems.txt
++++ b/scripts/lint/exemptions/Theorems.txt
+@@ -483,20 +483,21 @@ LadderSystem.finrank_vacuumSpan_eq_choose
+ QuadraticMap.toMultilinearMap_continuous
+ QuadraticMap.toMultilinearMapHalfPolarBilin_continuous
+ QuadraticMap.toContinuousMultilinearMap_apply
+ QuadraticMap.toContinuousMultilinearMap_applyHalf
+ le_of_littleO
+ isLocalMin_of_posDef_of_littleo
+ second_derivative_test
+ second_derivative_test_analyticAt
+ QuantumMechanics.HarmonicOscillator.loweringCLM_vacuumGaussian
+ QuantumMechanics.HarmonicOscillator.hasVacuum_vacuumGaussian
++QuantumMechanics.OntologicalModel.PreparationIndependent.isPsiOntic
+ stinespringOp_apply
+ complCard
+ Ud_orthonormal₁
+ Ud_orthonormal₂
+ unitary_of_orthonormal
+ tracefree_version
+ heisenberg_schrõdinger
+ unitaryForm_of_general
+ unitaryForm_of_general_e
+ stinespringOp_gram

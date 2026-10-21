@@ -1,0 +1,307 @@
+# Review package: 4ed4eb11..HEAD
+
+## Commits
+b72381d6 feat(PhyslibAlpha/ProbabilisticTheory): add ofVec_smul and norm_inner_lt_one_of_ofVec_ne
+9bc3f215 feat(PhyslibAlpha/FiniteTarget): add piProdVec and inner_piProdVec
+15b9c49e feat(PhyslibAlpha/MeasureTheory): add Measure.pi_mono
+
+## Files changed
+ PhyslibAlpha.lean                                  |  1 +
+ PhyslibAlpha/Mathematics/MeasureTheory/Pi.lean     | 60 ++++++++++++++++++++++
+ .../HilbertSpace/State/Vector.lean                 | 35 ++++++++++++-
+ .../HilbertSpaces/FiniteTarget/ProductState.lean   | 49 ++++++++++++++++++
+ 4 files changed, 143 insertions(+), 2 deletions(-)
+
+## Diff
+diff --git a/PhyslibAlpha.lean b/PhyslibAlpha.lean
+index 1d493a40..483a5d85 100644
+--- a/PhyslibAlpha.lean
++++ b/PhyslibAlpha.lean
+@@ -201,20 +201,21 @@ public import PhyslibAlpha.Mathematics.LadderSystem.Basic
+ public import PhyslibAlpha.Mathematics.LadderSystem.Irreducibility
+ public import PhyslibAlpha.Mathematics.LadderSystem.OccupationBasis
+ public import PhyslibAlpha.Mathematics.LadderSystem.SymmetricPower
+ public import PhyslibAlpha.Mathematics.LadderSystem.Vacuum
+ public import PhyslibAlpha.Mathematics.LeviCivita.Basic
+ public import PhyslibAlpha.Mathematics.LieAlgebraUnit
+ public import PhyslibAlpha.Mathematics.LinearCombination
+ public import PhyslibAlpha.Mathematics.MeasureTheory.BoundedMeasurable
+ public import PhyslibAlpha.Mathematics.MeasureTheory.IntegrationFunctional
+ public import PhyslibAlpha.Mathematics.MeasureTheory.LiftingAndConditioning
++public import PhyslibAlpha.Mathematics.MeasureTheory.Pi
+ public import PhyslibAlpha.Mathematics.MeasureTheory.PositiveFunctionalIntegral
+ public import PhyslibAlpha.Mathematics.MeasureTheory.RegularMeasure
+ public import PhyslibAlpha.Mathematics.Modules.ConjModule
+ public import PhyslibAlpha.Mathematics.MultisetAntidiagonal
+ public import PhyslibAlpha.Mathematics.MvPolynomialTranslation
+ public import PhyslibAlpha.Mathematics.Order.Freudenthal
+ public import PhyslibAlpha.Mathematics.Order.PositiveDual.Basic
+ public import PhyslibAlpha.Mathematics.Order.PositiveDual.Bidual
+ public import PhyslibAlpha.Mathematics.Order.PositiveDual.BidualLattice
+ public import PhyslibAlpha.Mathematics.Order.PositiveDual.Interpolation
+diff --git a/PhyslibAlpha/Mathematics/MeasureTheory/Pi.lean b/PhyslibAlpha/Mathematics/MeasureTheory/Pi.lean
+new file mode 100644
+index 00000000..a4b55ef6
+--- /dev/null
++++ b/PhyslibAlpha/Mathematics/MeasureTheory/Pi.lean
+@@ -0,0 +1,60 @@
++/-
++Copyright (c) 2026 brent. All rights reserved.
++Released under Apache 2.0 license as described in the file LICENSE.
++Authors: brent
++-/
++module
++
++public import Mathlib.MeasureTheory.Constructions.Pi
++
++/-!
++
++# Monotonicity of finite product measures
++
++Finite product measures `MeasureTheory.Measure.pi` are monotone in each of their factors.
++
++## i. Overview
++
++Mathlib constructs the finite product `Measure.pi μ` of a family of measures `μ i`, but does
++not (yet) record that it is monotone in the family. This file proves that if `μ i ≤ ν i` for
++every `i`, then `Measure.pi μ ≤ Measure.pi ν`. No `SigmaFinite` assumption is needed, since the
++proof goes through the outer measure `MeasureTheory.OuterMeasure.pi` from which `Measure.pi` is
++built.
++
++## ii. Key results
++
++- `MeasureTheory.Measure.pi_mono` : the finite product of measures is monotone in the family.
++
++## iii. Table of contents
++
++- A. Monotonicity of the product measure
++
++## iv. References
++
++* None.
++
++-/
++
++@[expose] public section
++
++namespace MeasureTheory.Measure
++
++/-!
++
++## A. Monotonicity of the product measure
++
++-/
++
++/-- The finite product measure `Measure.pi μ` is monotone in the family of measures `μ`:
++if `μ i ≤ ν i` for every `i`, then `Measure.pi μ ≤ Measure.pi ν`. -/
++lemma pi_mono {ι : Type*} [Fintype ι] {α : ι → Type*} [∀ i, MeasurableSpace (α i)]
++    {μ ν : (i : ι) → Measure (α i)} (h : ∀ i, μ i ≤ ν i) : Measure.pi μ ≤ Measure.pi ν := by
++  refine Measure.le_iff.2 fun s hs => ?_
++  rw [Measure.pi, toMeasure_apply _ _ hs, Measure.pi, toMeasure_apply _ _ hs]
++  suffices OuterMeasure.pi (fun i => (μ i).toOuterMeasure) ≤
++      OuterMeasure.pi (fun i => (ν i).toOuterMeasure) from this s
++  refine OuterMeasure.le_pi.2 fun t _ => ?_
++  exact (OuterMeasure.pi_pi_le _ t).trans <|
++    Finset.prod_le_prod fun i _ => (Measure.le_iff'.1 (h i)) (t i)
++
++end MeasureTheory.Measure
+diff --git a/PhyslibAlpha/ProbabilisticTheory/HilbertSpace/State/Vector.lean b/PhyslibAlpha/ProbabilisticTheory/HilbertSpace/State/Vector.lean
+index 90e1754f..1f10b83e 100644
+--- a/PhyslibAlpha/ProbabilisticTheory/HilbertSpace/State/Vector.lean
++++ b/PhyslibAlpha/ProbabilisticTheory/HilbertSpace/State/Vector.lean
+@@ -12,30 +12,36 @@ public import Mathlib.Analysis.CStarAlgebra.ContinuousLinearMap
+ 
+ /-!
+ 
+ # Vector states
+ 
+ A unit vector `ψ` defines the vector state `x ↦ ⟪ψ, x ψ⟫` on the bounded operators.
+ 
+ ## i. Overview
+ 
+ A unit vector `ψ` defines the vector state `x ↦ ⟪ψ, x ψ⟫` on the bounded operators.
++Multiplying `ψ` by a phase does not change its vector state, so two unit vectors with different
++vector states are not parallel: their overlap has norm `‖⟪ψ, φ⟫‖ < 1`.
+ 
+ ## ii. Key results
+ 
+ - `PositiveLinearMap.ofVec` : the positive functional of a vector.
+ - `UnitalPositiveLinearMap.ofVec` : the vector state of a unit vector.
++- `UnitalPositiveLinearMap.ofVec_smul` : vector states do not see a global phase.
++- `UnitalPositiveLinearMap.norm_inner_lt_one_of_ofVec_ne` : unit vectors with different vector
++  states have overlap of norm less than one.
+ 
+ ## iii. Table of contents
+ 
+ - A. Vector states
+-- B. Example
++- B. Phase invariance
++- C. Example
+ 
+ ## iv. References
+ 
+ * None.
+ 
+ -/
+ 
+ @[expose] public section
+ 
+ namespace ProbabilisticTheory
+@@ -64,25 +70,50 @@ def _root_.PositiveLinearMap.ofVec (ψ : H) : 𝓟[𝕜, H →L[𝕜] H] where
+ 
+ /-- The vector state associated with a unit vector. -/
+ def UnitalPositiveLinearMap.ofVec {ψ : H} (h : ‖ψ‖ = 1) : 𝓢[𝕜, H →L[𝕜] H] :=
+   { PositiveLinearMap.ofVec ψ with map_one' := by simp [h] }
+ 
+ /-- Evaluation of a vector state is the corresponding quadratic form. -/
+ @[simp]
+ lemma UnitalPositiveLinearMap.ofVec_apply {ψ : H} (h : ‖ψ‖ = 1) (x : H →L[𝕜] H) :
+     UnitalPositiveLinearMap.ofVec h x = ⟪ψ, x • ψ⟫_𝕜 := rfl
+ 
++/-!
++
++## B. Phase invariance
++
++-/
++
++/-- Vector states do not see a global phase: `ofVec (c • ψ) = ofVec ψ` for `‖c‖ = 1`. -/
++lemma UnitalPositiveLinearMap.ofVec_smul {ψ : H} (h : ‖ψ‖ = 1) {c : 𝕜} (hc : ‖c‖ = 1)
++    (h' : ‖c • ψ‖ = 1) :
++    UnitalPositiveLinearMap.ofVec (𝕜 := 𝕜) h' = UnitalPositiveLinearMap.ofVec (𝕜 := 𝕜) h :=
++  UnitalPositiveLinearMap.ext fun x => by
++    simp only [ofVec_apply, ContinuousLinearMap.smul_def, map_smul, inner_smul_left,
++      inner_smul_right]
++    rw [← mul_assoc, RCLike.mul_conj, hc]
++    simp
++
++/-- Unit vectors with different vector states are not parallel: `‖⟪ψ, φ⟫‖ < 1`. -/
++lemma UnitalPositiveLinearMap.norm_inner_lt_one_of_ofVec_ne {ψ φ : H} (hψ : ‖ψ‖ = 1)
++    (hφ : ‖φ‖ = 1) (h : ofVec (𝕜 := 𝕜) hψ ≠ ofVec (𝕜 := 𝕜) hφ) : ‖⟪ψ, φ⟫_𝕜‖ < 1 := by
++  refine ((norm_inner_le_norm ψ φ).trans_eq (by rw [hψ, hφ, one_mul])).lt_of_ne fun heq => h ?_
++  -- equality in the Cauchy–Schwarz inequality: `φ` is a multiple of `ψ`
++  obtain ⟨c, -, rfl⟩ := (norm_inner_eq_norm_iff (𝕜 := 𝕜) (norm_ne_zero_iff.1 (hψ ▸ one_ne_zero))
++    (norm_ne_zero_iff.1 (hφ ▸ one_ne_zero))).1 (by rw [heq, hψ, hφ, one_mul])
++  exact (ofVec_smul hψ (by simpa [norm_smul, hψ] using hφ) hφ).symm
++
+ end ofVec
+ 
+ /-!
+ 
+-## B. Example
++## C. Example
+ 
+ -/
+ 
+ section Example
+ 
+ open UnitalPositiveLinearMap
+ 
+ variable {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℂ H] [CompleteSpace H]
+ 
+ example (ψ : H) (h : ‖ψ‖ = 1) :
+diff --git a/PhyslibAlpha/QuantumMechanics/HilbertSpaces/FiniteTarget/ProductState.lean b/PhyslibAlpha/QuantumMechanics/HilbertSpaces/FiniteTarget/ProductState.lean
+index 421d000c..ee647de3 100644
+--- a/PhyslibAlpha/QuantumMechanics/HilbertSpaces/FiniteTarget/ProductState.lean
++++ b/PhyslibAlpha/QuantumMechanics/HilbertSpaces/FiniteTarget/ProductState.lean
+@@ -12,38 +12,46 @@ public import PhyslibAlpha.ProbabilisticTheory.HilbertSpace.State.VectorUncertai
+ 
+ # Product states of a product of finite targets
+ 
+ ## i. Overview
+ 
+ The product state `(ψ ⊗ φ) (a, b) = ψ a φ b` of two unit vectors describes two uncorrelated
+ coordinates. An observable acting on one coordinate only sees that coordinate: its mean, its
+ variance, its covariance with another such observable and their centered Gram defect are those
+ of the factor state.
+ 
++More generally, a finite family of vectors `ψ i` on `𝓗[α]` has the product vector
++`(ψ 0 ⊗ ⋯ ⊗ ψ (n - 1)) k = ∏ i, ψ i (k i)` on `𝓗[ι → α]`, describing independently prepared
++copies of a system; inner products and norms of product vectors are products.
++
+ ## ii. Key results
+ 
+ - `prodVec` : the product vector `ψ ⊗ φ`, of norm `‖ψ‖ ‖φ‖` by `norm_prodVec`.
+ - `onFst_prodVec`, `onSnd_prodVec` : `(A ⊗ 1) (ψ ⊗ φ) = A ψ ⊗ φ` and `(1 ⊗ B) (ψ ⊗ φ) = ψ ⊗ B φ`.
+ - `onFstObservable`, `onSndObservable` : an observable acting on one coordinate.
+ - `variance_onFstObservable`, `covariance_onFstObservable`,
+   `centeredGramDefect_onFstObservable` : the statistics of the first coordinate.
+ - `variance_onSndObservable`, `covariance_onSndObservable`,
+   `centeredGramDefect_onSndObservable` : the statistics of the second coordinate.
+ - `covariance_onFstObservable_onSndObservable` : the two coordinates are uncorrelated.
++- `piProdVec` : the product vector `ψ 0 ⊗ ⋯ ⊗ ψ (n - 1)` of a finite family.
++- `inner_piProdVec`, `norm_piProdVec`, `norm_piProdVec_eq_one` : `⟪⊗ v, ⊗ w⟫ = ∏ i, ⟪v i, w i⟫`,
++  `‖⊗ v‖ = ∏ i, ‖v i‖`, and a product of unit vectors is a unit vector.
+ 
+ ## iii. Table of contents
+ 
+ - A. Product vectors
+ - B. Observables on one coordinate
+ - C. Statistics of the first coordinate
+ - D. Statistics of the second coordinate
+ - E. Different coordinates are uncorrelated
++- F. Product vectors of finite families
+ 
+ ## iv. References
+ 
+ * None.
+ 
+ -/
+ 
+ @[expose] public section
+ 
+ namespace QuantumMechanics
+@@ -256,13 +264,54 @@ lemma inner_fluctuation {γ : Type*} [Fintype γ] [DecidableEq γ] {χ : 𝓗[γ
+ 
+ /-- In a product state, an observable of the first coordinate and one of the second are
+ uncorrelated. -/
+ lemma covariance_onFstObservable_onSndObservable (a : Observable (𝓗[α] →L[ℂ] 𝓗[α]))
+     (b : Observable (𝓗[β] →L[ℂ] 𝓗[β])) :
+     covariance (ofVec (norm_prodVec_eq_one hψ hφ)) (onFstObservable a) (onSndObservable b) = 0 := by
+   rw [covariance_eq_re_apply_centered_mul, apply_centered_mul_centered_ofVec,
+     fluctuation_onFstObservable hψ hφ, fluctuation_onSndObservable hψ hφ, inner_prodVec,
+     inner_fluctuation hφ, mul_zero, Complex.zero_re]
+ 
++/-!
++
++## F. Product vectors of finite families
++
++-/
++
++section piProdVec
++
++variable {ι : Type*} [Fintype ι] [DecidableEq ι]
++
++/-- The product vector `(ψ 0 ⊗ ⋯ ⊗ ψ (n - 1)) k = ∏ i, ψ i (k i)` of a finite family of vectors,
++describing independently prepared copies of a system. -/
++noncomputable def piProdVec (v : ι → 𝓗[α]) : 𝓗[ι → α] :=
++  ⟨WithLp.toLp 2 fun k => ∏ i, (v i).val (k i)⟩
++
++/-- The components of a product vector are the products of the components. -/
++lemma piProdVec_val (v : ι → 𝓗[α]) (k : ι → α) :
++    (piProdVec v).val k = ∏ i, (v i).val (k i) := rfl
++
++/-- `⟪⊗ v, ⊗ w⟫ = ∏ i, ⟪v i, w i⟫`. -/
++lemma inner_piProdVec (v w : ι → 𝓗[α]) :
++    ⟪piProdVec v, piProdVec w⟫_ℂ = ∏ i, ⟪v i, w i⟫_ℂ := by
++  simp only [inner_eq_val, PiLp.inner_apply, RCLike.inner_apply, piProdVec_val, map_prod,
++    ← Finset.prod_mul_distrib]
++  exact (Fintype.prod_sum fun i a => (w i).val a * (starRingEnd ℂ) ((v i).val a)).symm
++
++/-- `‖⊗ v‖ = ∏ i, ‖v i‖`. -/
++lemma norm_piProdVec (v : ι → 𝓗[α]) : ‖piProdVec v‖ = ∏ i, ‖v i‖ := by
++  have h := inner_piProdVec v v
++  simp only [inner_self_eq_norm_sq_to_K] at h
++  norm_cast at h
++  exact (pow_left_inj₀ (norm_nonneg _) (Finset.prod_nonneg fun i _ => norm_nonneg _)
++    two_ne_zero).mp (by rw [h, Finset.prod_pow])
++
++/-- The product of unit vectors is a unit vector. -/
++lemma norm_piProdVec_eq_one {v : ι → 𝓗[α]} (hv : ∀ i, ‖v i‖ = 1) : ‖piProdVec v‖ = 1 := by
++  rw [norm_piProdVec]
++  exact Finset.prod_eq_one fun i _ => hv i
++
++end piProdVec
++
+ end FiniteHilbertSpace
+ 
+ end QuantumMechanics

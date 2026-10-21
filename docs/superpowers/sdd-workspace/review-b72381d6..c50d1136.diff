@@ -1,0 +1,238 @@
+# Review package: b72381d6..HEAD
+
+## Commits
+c50d1136 feat(PhyslibAlpha/FiniteTarget): add orthonormalMeasurement and its Born rule
+
+## Files changed
+ PhyslibAlpha.lean                                  |   1 +
+ .../HilbertSpaces/FiniteTarget/Measurement.lean    | 195 +++++++++++++++++++++
+ 2 files changed, 196 insertions(+)
+
+## Diff
+diff --git a/PhyslibAlpha.lean b/PhyslibAlpha.lean
+index 483a5d85..5c697232 100644
+--- a/PhyslibAlpha.lean
++++ b/PhyslibAlpha.lean
+@@ -653,20 +653,21 @@ public import PhyslibAlpha.ProbabilisticTheory.WStarAlgebra.RankOnePairing
+ public import PhyslibAlpha.ProbabilisticTheory.WStarAlgebra.TracePairingNorm
+ public import PhyslibAlpha.ProbabilisticTheory.WStarAlgebra.TracePairingSurjectivity
+ public import PhyslibAlpha.ProbabilisticTheory.Weight.Basic
+ public import PhyslibAlpha.ProbabilisticTheory.Weight.Continuous
+ public import PhyslibAlpha.ProbabilisticTheory.Weight.Extension
+ public import PhyslibAlpha.QuantumMechanics.AngularMomentum.Addition
+ public import PhyslibAlpha.QuantumMechanics.AngularMomentum.Basic
+ public import PhyslibAlpha.QuantumMechanics.Blackbody.RayleighJeans
+ public import PhyslibAlpha.QuantumMechanics.HarmonicOscillator.LadderSystem
+ public import PhyslibAlpha.QuantumMechanics.HarmonicOscillator.Vacuum
++public import PhyslibAlpha.QuantumMechanics.HilbertSpaces.FiniteTarget.Measurement
+ public import PhyslibAlpha.QuantumMechanics.HilbertSpaces.FiniteTarget.Operators
+ public import PhyslibAlpha.QuantumMechanics.HilbertSpaces.FiniteTarget.Product
+ public import PhyslibAlpha.QuantumMechanics.HilbertSpaces.FiniteTarget.ProductState
+ public import PhyslibAlpha.QuantumMechanics.QuantumHarmonicOscillator
+ public import PhyslibAlpha.QuantumMechanics.StinespringDilation
+ public import PhyslibAlpha.Relativity.Fermions.Dirac.MinimalDimension
+ public import PhyslibAlpha.Relativity.Fermions.Weyl.BoostWeight
+ public import PhyslibAlpha.Relativity.Fermions.Weyl.Metric
+ public import PhyslibAlpha.Relativity.General.Schwarzschild.IncompressibleSphere
+ public import PhyslibAlpha.Relativity.IsLorentzDeriv
+diff --git a/PhyslibAlpha/QuantumMechanics/HilbertSpaces/FiniteTarget/Measurement.lean b/PhyslibAlpha/QuantumMechanics/HilbertSpaces/FiniteTarget/Measurement.lean
+new file mode 100644
+index 00000000..cc78e3e3
+--- /dev/null
++++ b/PhyslibAlpha/QuantumMechanics/HilbertSpaces/FiniteTarget/Measurement.lean
+@@ -0,0 +1,195 @@
++/-
++Copyright (c) 2026 brent. All rights reserved.
++Released under Apache 2.0 license as described in the file LICENSE.
++Authors: brent
++-/
++module
++
++public import PhyslibAlpha.QuantumMechanics.HilbertSpaces.FiniteTarget.Operators
++public import PhyslibAlpha.ProbabilisticTheory.CStarAlgebra.OrderUnit
++public import PhyslibAlpha.ProbabilisticTheory.HilbertSpace.State.Vector
++public import PhyslibAlpha.ProbabilisticTheory.Measurement.Finite
++public import PhyslibAlpha.ProbabilisticTheory.StarAlgebra.Statistics
++
++/-!
++
++# Measurements in an orthonormal family
++
++The measurement of a finite target system in a finite orthonormal family of vectors.
++
++## i. Overview
++
++Let `b x`, for `x` in a finite type `X`, be orthonormal vectors of `𝓗[d]`. The rank-one
++projections `|b x⟩⟨b x|` are effects, and by Bessel's inequality their sum is at most `1`.
++Adding the remainder `1 - ∑ x, |b x⟩⟨b x|` to the effect of a chosen outcome `x₀` gives a
++measurement with outcomes `X`. On a unit vector `φ`, the outcome `x` has probability
++`‖⟪b x, φ⟫‖ ^ 2`, plus `1 - ∑ y, ‖⟪b y, φ⟫‖ ^ 2` when `x = x₀`. In particular, if `φ` lies in the
++span of the `b x`, the outcome `x` has probability `‖⟪b x, φ⟫‖ ^ 2`.
++
++## ii. Key results
++
++- `rankOneObservable` : the rank-one observable `|v⟩⟨v|`.
++- `orthonormalObservable` : the observable of an outcome, `|b x⟩⟨b x|` plus the remainder on `x₀`.
++- `sum_orthonormalObservable`, `orthonormalObservable_nonneg` : the outcome observables are
++  positive and add up to `1`.
++- `orthonormalMeasurement` : the measurement in an orthonormal family.
++- `expectation_orthonormalMeasurement` : the Born rule for this measurement.
++
++## iii. Table of contents
++
++- A. Rank-one observables
++- B. The outcome observables
++- C. The measurement and its Born rule
++
++## iv. References
++
++* None.
++
++-/
++
++@[expose] public section
++
++namespace QuantumMechanics
++
++namespace FiniteHilbertSpace
++
++open ProbabilisticTheory InnerProductSpace UnitalPositiveLinearMap
++open scoped ComplexOrder
++
++variable {d X : Type*} [Fintype d] [DecidableEq d] [Fintype X]
++
++/-!
++
++## A. Rank-one observables
++
++-/
++
++/-- The rank-one observable `|v⟩⟨v|`. -/
++noncomputable def rankOneObservable (v : 𝓗[d]) : Observable (𝓗[d] →L[ℂ] 𝓗[d]) :=
++  ⟨rankOne ℂ v v, (isPositive_rankOne_self v).isSelfAdjoint⟩
++
++@[simp]
++lemma coe_rankOneObservable (v : 𝓗[d]) :
++    (rankOneObservable v : 𝓗[d] →L[ℂ] 𝓗[d]) = rankOne ℂ v v := rfl
++
++/-- The rank-one observable `|v⟩⟨v|` is positive. -/
++lemma rankOneObservable_nonneg (v : 𝓗[d]) : 0 ≤ rankOneObservable v :=
++  ContinuousLinearMap.nonneg_iff_isPositive.2 (isPositive_rankOne_self v)
++
++/-- `⟪φ, |v⟩⟨v| φ⟫ = ‖⟪v, φ⟫‖ ^ 2`. -/
++lemma inner_rankOne_self_apply (v φ : 𝓗[d]) :
++    ⟪φ, rankOne ℂ v v φ⟫_ℂ = (‖⟪v, φ⟫_ℂ‖ ^ 2 : ℝ) := by
++  rw [rankOne_apply, inner_smul_right, ← inner_conj_symm φ v, RCLike.mul_conj]
++  push_cast
++  rfl
++
++/-- `⟪φ, ∑ y, |b y⟩⟨b y| φ⟫ = ∑ y, ‖⟪b y, φ⟫‖ ^ 2`. -/
++lemma inner_sum_rankOne_self_apply (b : X → 𝓗[d]) (φ : 𝓗[d]) :
++    ⟪φ, (∑ y, rankOne ℂ (b y) (b y)) φ⟫_ℂ = (∑ y, ‖⟪b y, φ⟫_ℂ‖ ^ 2 : ℝ) := by
++  rw [sum_apply, inner_sum, Complex.ofReal_sum]
++  exact Finset.sum_congr rfl fun y _ => inner_rankOne_self_apply (b y) φ
++
++/-- By Bessel's inequality, `1 - ∑ y, |b y⟩⟨b y|` is positive for an orthonormal family `b`. -/
++lemma isPositive_one_sub_sum_rankOne {b : X → 𝓗[d]} (hb : Orthonormal ℂ b) :
++    (1 - ∑ y, rankOne ℂ (b y) (b y)).IsPositive := by
++  refine (ContinuousLinearMap.isPositive_iff' _).2 ⟨?_, fun φ => ?_⟩
++  · exact (IsSelfAdjoint.one _).sub
++      (isSelfAdjoint_sum _ fun y _ => (isPositive_rankOne_self (b y)).isSelfAdjoint)
++  · rw [← inner_conj_symm, sub_apply, inner_sub_right,
++      inner_sum_rankOne_self_apply, one_apply_eq_self, inner_self_eq_norm_sq_to_K]
++    norm_cast
++    change 0 ≤ starRingEnd ℂ (((‖φ‖ ^ 2 : ℝ) : ℂ) - ((∑ y, ‖⟪b y, φ⟫_ℂ‖ ^ 2 : ℝ) : ℂ))
++    rw [← Complex.ofReal_sub, Complex.conj_ofReal, Complex.zero_le_real, sub_nonneg]
++    exact hb.sum_inner_products_le φ
++
++/-!
++
++## B. The outcome observables
++
++-/
++
++variable [DecidableEq X]
++
++/-- The observable of the outcome `x` in the measurement in the family `b`: `|b x⟩⟨b x|`, plus
++the remainder `1 - ∑ y, |b y⟩⟨b y|` when `x = x₀`. -/
++noncomputable def orthonormalObservable (b : X → 𝓗[d]) (x₀ x : X) :
++    Observable (𝓗[d] →L[ℂ] 𝓗[d]) :=
++  rankOneObservable (b x) + if x = x₀ then 1 - ∑ y, rankOneObservable (b y) else 0
++
++/-- The operator underlying the observable of the outcome `x`. -/
++lemma coe_orthonormalObservable (b : X → 𝓗[d]) (x₀ x : X) :
++    (orthonormalObservable b x₀ x : 𝓗[d] →L[ℂ] 𝓗[d]) =
++      rankOne ℂ (b x) (b x) + if x = x₀ then 1 - ∑ y, rankOne ℂ (b y) (b y) else 0 := by
++  split_ifs with h <;> simp [orthonormalObservable, h]
++
++/-- The outcome observables add up to `1`. -/
++lemma sum_orthonormalObservable (b : X → 𝓗[d]) (x₀ : X) :
++    ∑ x, orthonormalObservable b x₀ x = 1 := by
++  simp [orthonormalObservable, Finset.sum_add_distrib]
++
++/-- The outcome observables of an orthonormal family are positive. -/
++lemma orthonormalObservable_nonneg {b : X → 𝓗[d]} (hb : Orthonormal ℂ b) (x₀ x : X) :
++    0 ≤ orthonormalObservable b x₀ x := by
++  refine add_nonneg (rankOneObservable_nonneg _) ?_
++  split_ifs
++  · show (0 : 𝓗[d] →L[ℂ] 𝓗[d]) ≤ ((1 - ∑ y, rankOneObservable (b y) :
++      Observable (𝓗[d] →L[ℂ] 𝓗[d])) : 𝓗[d] →L[ℂ] 𝓗[d])
++    push_cast
++    exact ContinuousLinearMap.nonneg_iff_isPositive.2 (isPositive_one_sub_sum_rankOne hb)
++  · exact le_rfl
++
++/-- The outcome effects of the measurement in an orthonormal family. -/
++noncomputable def orthonormalEffect {b : X → 𝓗[d]} (hb : Orthonormal ℂ b) (x₀ x : X) :
++    Effect (Observable (𝓗[d] →L[ℂ] 𝓗[d])) :=
++  ⟨orthonormalObservable b x₀ x, orthonormalObservable_nonneg hb x₀ x,
++    (Finset.single_le_sum (fun y _ => orthonormalObservable_nonneg hb x₀ y)
++      (Finset.mem_univ x)).trans_eq (sum_orthonormalObservable b x₀)⟩
++
++@[simp]
++lemma coe_orthonormalEffect {b : X → 𝓗[d]} (hb : Orthonormal ℂ b) (x₀ x : X) :
++    (orthonormalEffect hb x₀ x : Observable (𝓗[d] →L[ℂ] 𝓗[d])) = orthonormalObservable b x₀ x :=
++  rfl
++
++/-!
++
++## C. The measurement and its Born rule
++
++-/
++
++variable [MeasurableSpace X]
++
++/-- The measurement in the orthonormal family `b`: the outcome `x` has effect `|b x⟩⟨b x|`, and
++the outcome `x₀` also registers the orthogonal complement of the span of the family. -/
++noncomputable def orthonormalMeasurement {b : X → 𝓗[d]} (hb : Orthonormal ℂ b) (x₀ : X) :
++    Measurement X (Observable (𝓗[d] →L[ℂ] 𝓗[d])) :=
++  Measurement.ofAtoms (E := Observable (𝓗[d] →L[ℂ] 𝓗[d])) (orthonormalEffect hb x₀) (by
++    simpa only [coe_orthonormalEffect] using sum_orthonormalObservable b x₀)
++
++/-- The outcome `x` of the measurement in an orthonormal family has the observable
++`orthonormalObservable b x₀ x`. -/
++lemma coe_orthonormalMeasurement_singleton {b : X → 𝓗[d]} (hb : Orthonormal ℂ b) (x₀ x : X)
++    (hx : MeasurableSet {x}) :
++    (orthonormalMeasurement hb x₀ {x} hx : Observable (𝓗[d] →L[ℂ] 𝓗[d])) =
++      orthonormalObservable b x₀ x :=
++  Measurement.coe_ofAtoms_singleton _ _ x hx
++
++/-- The Born rule for the measurement in an orthonormal family: on a unit vector `φ`, the
++outcome `x` has probability `‖⟪b x, φ⟫‖ ^ 2`, plus `1 - ∑ y, ‖⟪b y, φ⟫‖ ^ 2` when `x = x₀`. -/
++lemma expectation_orthonormalMeasurement [MeasurableSingletonClass X] {b : X → 𝓗[d]}
++    (hb : Orthonormal ℂ b) (x₀ : X) {φ : 𝓗[d]} (hφ : ‖φ‖ = 1) (x : X) :
++    (ofVec hφ)⟨orthonormalMeasurement hb x₀ {x} (measurableSet_singleton x)⟩ =
++      ‖⟪b x, φ⟫_ℂ‖ ^ 2 + if x = x₀ then 1 - ∑ y, ‖⟪b y, φ⟫_ℂ‖ ^ 2 else 0 := by
++  apply Complex.ofReal_injective
++  rw [← apply_observable_eq_expectation, coe_orthonormalMeasurement_singleton, ofVec_apply,
++    ContinuousLinearMap.smul_def, coe_orthonormalObservable, add_apply, inner_add_right,
++    inner_rankOne_self_apply]
++  split_ifs
++  · rw [sub_apply, inner_sub_right, inner_sum_rankOne_self_apply, one_apply_eq_self,
++      inner_self_eq_norm_sq_to_K, hφ]
++    push_cast
++    ring
++  · rw [zero_apply, inner_zero_right, add_zero, add_zero]
++
++end FiniteHilbertSpace
++
++end QuantumMechanics
