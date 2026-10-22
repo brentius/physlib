@@ -27,7 +27,8 @@ vectors `ψ 0 + ζ ψ 1` and `ψ 0 - ζ ψ 1` divided by their norms. We normali
 rather than by its value `√(2 * (1 ± r))`, so that `qubitFrameVec` depends only on the vectors
 and the phase.
 The frame vectors are orthonormal, and with `c = √((1 + r) / 2)` and `s = √((1 - r) / 2)` one has
-`⟪e j, ψ b⟫_ℂ = phase b * walshSign j b * ![c, s] j` where `phase = ![1, conj ζ]`.
+`⟪e j, ψ b⟫_ℂ = phase b * walshSign j b * ![c, s] j`, where `e = qubitFrameVec (ψ 0) (ψ 1) ζ`
+and `phase = ![1, conj ζ]`.
 
 ## ii. Key results
 
@@ -238,11 +239,11 @@ end Vectors
 structure QubitFrame (ψ : Fin 2 → 𝓗[d]) where
   /-- The orthonormal frame vectors. -/
   e : Fin 2 → 𝓗[d]
-  /-- The amplitude of `e 0` in the vectors; for the frame built by `exists_qubitFrame` it is
-  `√((1 + ‖⟪ψ 0, ψ 1⟫_ℂ‖) / 2)`. -/
+  /-- The amplitude of `e 0` in the vectors. For the frame `QubitFrame.ofPhase` used by
+  `exists_qubitFrame` it is `√((1 + ‖⟪ψ 0, ψ 1⟫_ℂ‖) / 2)`. -/
   c : ℝ
-  /-- The amplitude of `e 1` in the vectors; for the frame built by `exists_qubitFrame` it is
-  `√((1 - ‖⟪ψ 0, ψ 1⟫_ℂ‖) / 2)`. -/
+  /-- The amplitude of `e 1` in the vectors. For the frame `QubitFrame.ofPhase` used by
+  `exists_qubitFrame` it is `√((1 - ‖⟪ψ 0, ψ 1⟫_ℂ‖) / 2)`. -/
   s : ℝ
   /-- The global phases of the two vectors in the frame. -/
   phase : Fin 2 → ℂ
