@@ -22,15 +22,16 @@ the two states, as `|ψ₀⟩ = c|0⟩ + s|1⟩` and `|ψ₁⟩ = c|0⟩ - s|1�
 
 Let `ψ 0` and `ψ 1` be unit vectors of `𝓗[d]` with `‖⟪ψ 0, ψ 1⟫_ℂ‖ < 1`, that is, which are
 not equal up to a global phase. Write `γ = ⟪ψ 0, ψ 1⟫_ℂ`, `r = ‖γ‖ < 1` and
-`ζ = exp (-i arg γ)`, so that `ζ γ = r`. The frame vectors `frameVec (ψ 0) (ψ 1) ζ` are the
-vectors `ψ 0 + ζ ψ 1` and `ψ 0 - ζ ψ 1` divided by their norms. We normalize by the norm rather
-than by its value `√(2 * (1 ± r))`, so that `frameVec` depends only on the vectors and the phase.
+`ζ = exp (-i arg γ)`, so that `ζ γ = r`. The frame vectors `qubitFrameVec (ψ 0) (ψ 1) ζ` are the
+vectors `ψ 0 + ζ ψ 1` and `ψ 0 - ζ ψ 1` divided by their norms. We normalize by the norm
+rather than by its value `√(2 * (1 ± r))`, so that `qubitFrameVec` depends only on the vectors
+and the phase.
 The frame vectors are orthonormal, and with `c = √((1 + r) / 2)` and `s = √((1 - r) / 2)` one has
 `⟪e j, ψ b⟫_ℂ = phase b * walshSign j b * ![c, s] j` where `phase = ![1, conj ζ]`.
 
 ## ii. Key results
 
-- `PBR.frameVec` : the normalized vectors `ψ + ζ φ` and `ψ - ζ φ`.
+- `PBR.qubitFrameVec` : the normalized vectors `ψ + ζ φ` and `ψ - ζ φ`.
 - `PBR.QubitFrame` : the qubit frame of a pair of unit vectors.
 - `PBR.QubitFrame.sum_norm_sq_inner_e_state` : Parseval's identity for each `ψ b` in the frame.
 - `PBR.exists_qubitFrame` : two unit vectors which are not equal up to a global phase have a
@@ -158,22 +159,22 @@ lemma norm_sub_smul (hψ : ‖ψ‖ = 1) (hφ : ‖φ‖ = 1) (hζ : ‖ζ‖ = 
 
 /-- The frame vectors `ψ + ζ φ` and `ψ - ζ φ`, each divided by its norm. A zero vector stays
 zero. -/
-def frameVec (ψ φ : 𝓗[d]) (ζ : ℂ) : Fin 2 → 𝓗[d] :=
+def qubitFrameVec (ψ φ : 𝓗[d]) (ζ : ℂ) : Fin 2 → 𝓗[d] :=
   ![(‖ψ + ζ • φ‖⁻¹ : ℂ) • (ψ + ζ • φ), (‖ψ - ζ • φ‖⁻¹ : ℂ) • (ψ - ζ • φ)]
 
-/-- The frame vector `frameVec ψ φ ζ 0` is the normalized `ψ + ζ φ`. -/
+/-- The frame vector `qubitFrameVec ψ φ ζ 0` is the normalized `ψ + ζ φ`. -/
 @[simp]
-lemma frameVec_zero (ψ φ : 𝓗[d]) (ζ : ℂ) :
-    frameVec ψ φ ζ 0 = (‖ψ + ζ • φ‖⁻¹ : ℂ) • (ψ + ζ • φ) := rfl
+lemma qubitFrameVec_zero (ψ φ : 𝓗[d]) (ζ : ℂ) :
+    qubitFrameVec ψ φ ζ 0 = (‖ψ + ζ • φ‖⁻¹ : ℂ) • (ψ + ζ • φ) := rfl
 
-/-- The frame vector `frameVec ψ φ ζ 1` is the normalized `ψ - ζ φ`. -/
+/-- The frame vector `qubitFrameVec ψ φ ζ 1` is the normalized `ψ - ζ φ`. -/
 @[simp]
-lemma frameVec_one (ψ φ : 𝓗[d]) (ζ : ℂ) :
-    frameVec ψ φ ζ 1 = (‖ψ - ζ • φ‖⁻¹ : ℂ) • (ψ - ζ • φ) := rfl
+lemma qubitFrameVec_one (ψ φ : 𝓗[d]) (ζ : ℂ) :
+    qubitFrameVec ψ φ ζ 1 = (‖ψ - ζ • φ‖⁻¹ : ℂ) • (ψ - ζ • φ) := rfl
 
 /-- For `-1 < r < 1` the frame vectors are orthonormal. -/
-lemma orthonormal_frameVec (hψ : ‖ψ‖ = 1) (hφ : ‖φ‖ = 1) (hζ : ‖ζ‖ = 1)
-    (hr : ζ * ⟪ψ, φ⟫_ℂ = r) (hr0 : -1 < r) (hr1 : r < 1) : Orthonormal ℂ (frameVec ψ φ ζ) := by
+lemma orthonormal_qubitFrameVec (hψ : ‖ψ‖ = 1) (hφ : ‖φ‖ = 1) (hζ : ‖ζ‖ = 1)
+    (hr : ζ * ⟪ψ, φ⟫_ℂ = r) (hr0 : -1 < r) (hr1 : r < 1) : Orthonormal ℂ (qubitFrameVec ψ φ ζ) := by
   have h0 : ψ + ζ • φ ≠ 0 := by
     rw [← norm_ne_zero_iff, norm_add_smul hψ hφ hζ hr, Real.sqrt_ne_zero']
     linarith
@@ -185,26 +186,26 @@ lemma orthonormal_frameVec (hψ : ‖ψ‖ = 1) (hφ : ‖φ‖ = 1) (hζ : ‖�
     · exact norm_smul_inv_norm h0
     · exact norm_smul_inv_norm h1
   · fin_cases j <;> fin_cases k <;>
-      simp only [ne_eq, not_true_eq_false, Fin.zero_eta, Fin.mk_one, Fin.isValue, frameVec_zero,
-        frameVec_one] at hjk ⊢ <;>
+      simp only [ne_eq, not_true_eq_false, Fin.zero_eta, Fin.mk_one, Fin.isValue,
+        qubitFrameVec_zero, qubitFrameVec_one] at hjk ⊢ <;>
       rw [inner_smul_left, inner_smul_right]
     · rw [inner_add_smul_sub_smul hψ hφ hζ hr, mul_zero, mul_zero]
     · rw [inner_sub_smul_add_smul hψ hφ hζ hr, mul_zero, mul_zero]
 
 /-- The components of `ψ` along the frame vectors are `√((1 + r) / 2)` and `√((1 - r) / 2)`. -/
-lemma inner_frameVec_fst (hψ : ‖ψ‖ = 1) (hφ : ‖φ‖ = 1) (hζ : ‖ζ‖ = 1)
+lemma inner_qubitFrameVec_fst (hψ : ‖ψ‖ = 1) (hφ : ‖φ‖ = 1) (hζ : ‖ζ‖ = 1)
     (hr : ζ * ⟪ψ, φ⟫_ℂ = r) (j : Fin 2) :
-    ⟪frameVec ψ φ ζ j, ψ⟫_ℂ = ![(√((1 + r) / 2) : ℂ), (√((1 - r) / 2) : ℂ)] j := by
+    ⟪qubitFrameVec ψ φ ζ j, ψ⟫_ℂ = ![(√((1 + r) / 2) : ℂ), (√((1 - r) / 2) : ℂ)] j := by
   have key (a : ℝ) : (√(2 * a))⁻¹ * a = √(a / 2) := by
     rw [inv_mul_eq_div, Real.sqrt_mul zero_le_two, mul_comm, ← div_div, Real.div_sqrt,
       Real.sqrt_div' _ zero_le_two]
   fin_cases j
-  · simp only [Fin.zero_eta, Fin.isValue, frameVec_zero, inner_smul_left, map_inv₀,
+  · simp only [Fin.zero_eta, Fin.isValue, qubitFrameVec_zero, inner_smul_left, map_inv₀,
       Complex.conj_ofReal, inner_add_smul_fst hψ hr, norm_add_smul hψ hφ hζ hr,
       Matrix.cons_val_zero, ← key (1 + r)]
     push_cast
     ring
-  · simp only [Fin.mk_one, Fin.isValue, frameVec_one, inner_smul_left, map_inv₀,
+  · simp only [Fin.mk_one, Fin.isValue, qubitFrameVec_one, inner_smul_left, map_inv₀,
       Complex.conj_ofReal, inner_sub_smul_fst hψ hr, norm_sub_smul hψ hφ hζ hr,
       Matrix.cons_val_one, Matrix.cons_val_fin_one, ← key (1 - r)]
     push_cast
@@ -212,14 +213,15 @@ lemma inner_frameVec_fst (hψ : ‖ψ‖ = 1) (hφ : ‖φ‖ = 1) (hζ : ‖ζ�
 
 /-- The component of `φ` along a frame vector is `conj ζ` times that of `ψ`, with a sign `-1`
 for the frame vector `ψ - ζ φ`. -/
-lemma inner_frameVec_snd (hψ : ‖ψ‖ = 1) (hφ : ‖φ‖ = 1) (hζ : ‖ζ‖ = 1)
+lemma inner_qubitFrameVec_snd (hψ : ‖ψ‖ = 1) (hφ : ‖φ‖ = 1) (hζ : ‖ζ‖ = 1)
     (hr : ζ * ⟪ψ, φ⟫_ℂ = r) (j : Fin 2) :
-    ⟪frameVec ψ φ ζ j, φ⟫_ℂ = starRingEnd ℂ ζ * walshSign j 1 * ⟪frameVec ψ φ ζ j, ψ⟫_ℂ := by
+    ⟪qubitFrameVec ψ φ ζ j, φ⟫_ℂ =
+      starRingEnd ℂ ζ * walshSign j 1 * ⟪qubitFrameVec ψ φ ζ j, ψ⟫_ℂ := by
   fin_cases j
-  · simp only [Fin.zero_eta, Fin.isValue, frameVec_zero, inner_smul_left,
+  · simp only [Fin.zero_eta, Fin.isValue, qubitFrameVec_zero, inner_smul_left,
       inner_add_smul_fst hψ hr, inner_add_smul_snd hφ hζ hr, walshSign_zero_left]
     ring
-  · simp only [Fin.mk_one, Fin.isValue, frameVec_one, inner_smul_left,
+  · simp only [Fin.mk_one, Fin.isValue, qubitFrameVec_one, inner_smul_left,
       inner_sub_smul_fst hψ hr, inner_sub_smul_snd hφ hζ hr, walshSign_one_one]
     ring
 
@@ -282,12 +284,12 @@ end QubitFrame
 -/
 
 /-- The qubit frame of unit vectors `ψ 0` and `ψ 1` built from a unit `ζ` with
-`ζ * ⟪ψ 0, ψ 1⟫_ℂ = r < 1`. Its vectors are `frameVec (ψ 0) (ψ 1) ζ`, its amplitudes are
+`ζ * ⟪ψ 0, ψ 1⟫_ℂ = r < 1`. Its vectors are `qubitFrameVec (ψ 0) (ψ 1) ζ`, its amplitudes are
 `c = √((1 + r) / 2)` and `s = √((1 - r) / 2)`, and its phases are `![1, conj ζ]`. -/
 def QubitFrame.ofPhase (ψ : Fin 2 → 𝓗[d]) (hψ : ∀ b, ‖ψ b‖ = 1) {ζ : ℂ} {r : ℝ}
     (hζ : ‖ζ‖ = 1) (hr : ζ * ⟪ψ 0, ψ 1⟫_ℂ = r) (hr0 : 0 ≤ r) (hr1 : r < 1) :
     QubitFrame ψ where
-  e := frameVec (ψ 0) (ψ 1) ζ
+  e := qubitFrameVec (ψ 0) (ψ 1) ζ
   c := √((1 + r) / 2)
   s := √((1 - r) / 2)
   phase := ![1, starRingEnd ℂ ζ]
@@ -297,11 +299,12 @@ def QubitFrame.ofPhase (ψ : Fin 2 → 𝓗[d]) (hψ : ∀ b, ‖ψ b‖ = 1) {�
     rw [Real.sq_sqrt (by linarith), Real.sq_sqrt (by linarith)]
     ring
   norm_phase b := by fin_cases b <;> simp [hζ]
-  orthonormal_e := orthonormal_frameVec (hψ 0) (hψ 1) hζ hr (by linarith) hr1
+  orthonormal_e := orthonormal_qubitFrameVec (hψ 0) (hψ 1) hζ hr (by linarith) hr1
   inner_e_state j b := by
     fin_cases b
-    · simp [inner_frameVec_fst (hψ 0) (hψ 1) hζ hr]
-    · simp [inner_frameVec_snd (hψ 0) (hψ 1) hζ hr, inner_frameVec_fst (hψ 0) (hψ 1) hζ hr]
+    · simp [inner_qubitFrameVec_fst (hψ 0) (hψ 1) hζ hr]
+    · simp [inner_qubitFrameVec_snd (hψ 0) (hψ 1) hζ hr,
+        inner_qubitFrameVec_fst (hψ 0) (hψ 1) hζ hr]
 
 /-!
 ### C.2. The aligning phase
