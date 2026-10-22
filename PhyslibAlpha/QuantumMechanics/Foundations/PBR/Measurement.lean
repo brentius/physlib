@@ -6,6 +6,7 @@ Authors: brent
 module
 
 public import PhyslibAlpha.ProbabilisticTheory.HilbertSpace.OrthonormalMeasurement
+public import PhyslibAlpha.QuantumMechanics.Foundations.PBR.Phases
 public import PhyslibAlpha.QuantumMechanics.Foundations.PBR.QubitFrame
 public import PhyslibAlpha.QuantumMechanics.HilbertSpaces.FiniteTarget.ProductState
 
@@ -84,7 +85,7 @@ lemma inner_frameVec_frameVec (z z' : Fin n → Fin 2) :
 lemma inner_frameVec_piProdVec (z x : Fin n → Fin 2) :
     ⟪F.frameVec z, piProdVec fun i => ψ (x i)⟫_ℂ =
       (∏ i, F.phase (x i)) * walsh z x * ∏ i, ![(F.c : ℂ), (F.s : ℂ)] (z i) := by
-  simp only [frameVec, inner_piProdVec, F.inner_e_state, Finset.prod_mul_distrib, walsh]
+  simp only [frameVec, inner_piProdVec, F.inner_e_state, Finset.prod_mul_distrib, walsh_eq]
 
 /-- Parseval's identity: the components of each product vector of the `ψ b` in the product frame
 have total squared norm one, so the product vector lies in the span of the product frame. -/
@@ -136,13 +137,13 @@ lemma orthonormal_measurementVec (hω : ∀ z, ‖ω z‖ = 1) :
   have hω' : ∀ z, ω z * starRingEnd ℂ (ω z) = 1 := fun z => by
     rw [Complex.mul_conj', hω]
     simp
-  rw [inner_measurementVec]
-  simp_rw [inner_frameVec_measurementVec]
-  calc _ = ∑ z, (((Real.sqrt (2 ^ n))⁻¹ : ℝ) : ℂ) ^ 2 * (walsh x z * walsh y z) := by
-        refine Finset.sum_congr rfl fun z _ => ?_
-        linear_combination
-          ((((Real.sqrt (2 ^ n))⁻¹ : ℝ) : ℂ) ^ 2 * walsh x z * walsh y z) * hω' z
-    _ = _ := by rw [← Finset.mul_sum, sum_walsh_mul_walsh, ofReal_inv_sqrt_two_pow_sq_mul_ite]
+  -- the Gram matrix of the `b x` is that of the orthonormal rescaled Walsh vectors
+  rw [← orthonormal_iff_ite.1 orthonormal_walshVec x y, inner_measurementVec]
+  simp only [inner_frameVec_measurementVec, PiLp.inner_apply, walshVec_apply, RCLike.inner_apply,
+    map_mul, Complex.conj_ofReal, conj_walsh]
+  refine Finset.sum_congr rfl fun z _ => ?_
+  linear_combination
+    ((((Real.sqrt (2 ^ n))⁻¹ : ℝ) : ℂ) ^ 2 * walsh x z * walsh y z) * hω' z
 
 /-!
 ### B.3. Inner products with product vectors
